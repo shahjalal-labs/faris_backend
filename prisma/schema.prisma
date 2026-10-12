@@ -1,0 +1,556 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String               @id @default(auto()) @map("_id") @db.ObjectId
+  userName           String?
+  fullName           String?
+  email              String
+  password           String
+  phoneNumber        String               @unique
+  gender             Gender?
+  dob                String?
+  profileImage       String?
+  fcmToken           String?
+  vatNo              String?
+  avgRating          Float                @default(0)
+  totalReview        Int                  @default(0)
+  role               UserRole?
+  isSetup            Boolean              @default(false)
+  status             UserStatus
+  lastLogin          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  providerBookings   Booking[]            @relation("ProviderBookings")
+  userBookings       Booking[]            @relation("UserBookings")
+  givenReviews       Review[]             @relation("Reviewer")
+  receivedReviews    Review[]             @relation("Provider")
+  sender             Room[]               @relation("user1Relation")
+  receiver           Room[]               @relation("user2Relation")
+  userLocations      UserLocation[]
+  providerProfiles   ProviderProfile[]
+  services           Service[]
+  availabilities     Availability[]
+  offers             Offer[]
+  favourites         Favourite[]
+  blocks             Block[]
+  feedbacks          Feedback[]
+  savedServices      SavedService[]
+  adminNotifications AdminNotifications[]
+
+  @@map("users")
+}
+
+model UserLocation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_locations")
+}
+
+model PendingUser {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  phoneNumber String   @unique
+  fcmToken    String?
+  vatNo       String?
+  fullName    String
+  email       String   @unique
+  password    String
+  role        UserRole
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pendingUsers")
+}
+
+model Otp {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("otps")
+}
+
+model ProviderProfile {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  providerId        String            @unique @db.ObjectId
+  region            String?
+  city              String?
+  serviceCategory   TServiceCategory?
+  serviceType       TServiceType?
+  logo              String?
+  locationLink      String?
+  earnings          Float?            @default(0)
+  optionalNote      String?
+  optionalPhoto     String?
+  vatUrl            String?
+  nidUrl            String?
+  nidNote           String?
+  additionalNote    String?
+  additionalPhoto   String?
+  bookingAutoAccept Boolean?          @default(false)
+  salonDescription  String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  provider          User              @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@map("provider_profiles")
+}
+
+model Service {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  providerId      String           @db.ObjectId
+  serviceName     String
+  providerName    String?
+  serviceCategory TServiceCategory
+  servicePrice    Float
+  totalProvider   Int
+  startTime       String?
+  link            String?
+  useWorkingHours Boolean
+  workingDays     String[]
+  useServiceHours Boolean
+  url1            String?
+  url2            String?
+  url3            String?
+  url4            String?
+  url5            String?
+  endTime         String?
+  duration        String
+  serviceMode     TServiceMode
+  description     String?
+  notes           String?
+  status          ServiceStatus    @default(Active)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  provider        User             @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  favourites      Favourite[]
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@map("services")
+}
+
+model SavedService {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  providerId      String            @db.ObjectId
+  serviceName     String?
+  url1            String?
+  url2            String?
+  url3            String?
+  url4            String?
+  url5            String?
+  providerName    String?
+  useWorkingHours Boolean?
+  workingDays     String[]
+  useServiceHours Boolean?
+  serviceCategory TServiceCategory?
+  servicePrice    Float?
+  totalProvider   Int?
+  startTime       String?
+  link            String?
+  endTime         String?
+  duration        String?
+  serviceMode     TServiceMode?
+  description     String?
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  provider        User              @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@map("savedServices")
+}
+
+model Offer {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  providerId          String           @db.ObjectId
+  serviceName         String
+  mediaUrl            String
+  useWorkingHours     Boolean
+  workingDays         String[]
+  useServiceHours     Boolean
+  description         String
+  servicePrice        Float
+  link                String?
+  serviceCategory     TServiceCategory
+  startDate           String?
+  endDate             String?
+  location            TServiceMode?
+  startTime           String?
+  endTime             String?
+  maxBookingsPerHour  Int?
+  totalAvailableSlots Int?
+  alreadyBooked       Int              @default(0)
+  status              ServiceStatus    @default(Pending)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  provider            User             @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  bookings            Booking[]
+  reviews             Review[]
+
+  @@map("offers")
+}
+
+model Booking {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  providerId   String        @db.ObjectId
+  userId       String        @db.ObjectId
+  serviceId    String?       @db.ObjectId
+  offerId      String?       @db.ObjectId
+  status       BookingStatus
+  date         DateTime
+  time         String
+  cancelReason String?
+  price        Float
+  isReviewed   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  provider     User          @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
+  user         User          @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  service      Service?      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  offer        Offer?        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  reviews      Review[]
+
+  @@map("bookings")
+}
+
+model Favourite {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  serviceId String   @db.ObjectId
+  userId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("favourites")
+}
+model Formula {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  days Int
+  service Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("formulas")
+}
+
+model Block {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  blockedUserId String   @db.ObjectId
+  roomId        String?  @db.ObjectId
+  name          String
+  profileImage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("blocks")
+}
+
+model NotifyOption {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientRegistered   Boolean  @default(true)
+  businessRegistered Boolean  @default(true)
+  newAdvertisement   Boolean  @default(true)
+  newFeedback        Boolean  @default(true)
+  newBooking         Boolean  @default(true)
+  bookingCancelled   Boolean  @default(true)
+  offerExpirty       Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("notifyOptions")
+}
+
+model Feedback {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String @db.ObjectId
+  content String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}
+
+model Room {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String?  @db.ObjectId
+  receiverId String?  @db.ObjectId
+  isBlocked  Boolean  @default(false)
+  blockerId  String?  @db.ObjectId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user1      User?    @relation("user1Relation", fields: [senderId], references: [id], onDelete: Cascade)
+  user2      User?    @relation("user2Relation", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  message Message[]
+
+  @@unique([senderId, receiverId])
+  @@map("rooms")
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  roomId    String   @db.ObjectId
+  user1Id   String   @db.ObjectId
+  user2Id   String   @db.ObjectId
+  content   String?
+  fileUrl   String[]
+  user1Read Boolean  @default(false)
+  user2Read Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model DashNotify {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  content String
+  additionalDetails String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dashNotifys")
+}
+
+model Availability {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  workerId  String          @db.ObjectId
+  dayOfWeek Int
+  slots     AvailableSlot[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, dayOfWeek])
+  @@map("availabilities")
+}
+
+model AvailableSlot {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  availabilityId String       @db.ObjectId
+  startTime      String
+  endTime        String
+  breakStartTime String?
+  breakEndTime   String?
+  availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("availableSlots")
+}
+
+model Notification {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  receiverId String?  @db.ObjectId
+  senderId   String?  @db.ObjectId
+  title      String?
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+model Review {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  providerId String   @db.ObjectId
+  bookingId  String   @db.ObjectId
+  serviceId  String?  @db.ObjectId
+  offerId    String?  @db.ObjectId
+  comment    String
+  rating     Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation("Reviewer", fields: [userId], references: [id], onDelete: Cascade)
+  provider User     @relation("Provider", fields: [providerId], references: [id], onDelete: Cascade)
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  offer    Offer?   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model Onboarding {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  key       OnboardKey @unique
+  title     String
+  content   String
+  fileUrl   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("onboardings")
+}
+
+model PrivacyPolicy {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  key       PrivacyKey @unique
+  content   String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("privacyPolicies")
+}
+
+model Welcome {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       UserRole @unique
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("welcomes")
+}
+
+model Faq {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  question  String   @unique
+  answer    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+model CancelReason {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  reason    String   @unique
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cancelReasons")
+}
+
+model AdminNotifications {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  receiver  TReceivers
+  content   String
+  userId    String?    @db.ObjectId
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("adminNotifications")
+}
+
+model Admin {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  adminName    String
+  email        String   @unique
+  password     String
+  editing      Boolean
+  viewing      Boolean
+  profileImage String?
+  city         String?
+  region       String?
+  bio          String?
+  dashboard    Boolean  @default(false)
+  cm           Boolean  @default(false)
+  bm           Boolean  @default(false)
+  sm           Boolean  @default(false)
+  vo           Boolean  @default(false)
+  cr           Boolean  @default(false)
+  earnings     Boolean  @default(false)
+  in           Boolean  @default(false)
+  bbm          Boolean  @default(false)
+  aic          Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admins")
+}
+
+enum UserStatus {
+  Active
+  Deactivated
+  Pending
+  Rejected
+}
+
+enum ServiceStatus {
+  Active
+  Deactivated
+  Pending
+}
+
+enum TReceivers {
+  AllUsers
+  Users
+  Providers
+  SingleUser
+}
+
+enum PrivacyKey {
+  User
+  Expert
+}
+
+enum TServiceCategory {
+  Male
+  Female
+  Both
+}
+
+enum TServiceMode {
+  Online
+  Home
+}
+
+enum TServiceType {
+  Salon
+  Aesthetic
+  Grooming
+  Spa
+}
+
+enum BookingStatus {
+  Pending
+  Active
+  Completed
+  Cancelled
+}
+
+enum TNotificationType {
+  Order
+  Session
+  Earning
+  Feedback
+}
+
+enum OnboardKey {
+  Faris
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum UserRole {
+  Provider
+  User
+  Admin
+}
